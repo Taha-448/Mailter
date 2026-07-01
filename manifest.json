@@ -1,0 +1,29 @@
+{
+  "manifest_version": 3,
+  "name": "UniPriority",
+  "version": "1.0",
+  "description": "Priority filtering for student emails.",
+  "permissions": [
+    "identity",
+    "storage",
+    "notifications",
+    "alarms"
+  ],
+  "host_permissions": [
+    "https://www.googleapis.com/*"
+  ],
+  "oauth2": {
+    "client_id": "PASTE_YOUR_CLIENT_ID_HERE",
+    "scopes": [
+      "https://www.googleapis.com/auth/gmail.readonly",
+      "https://www.googleapis.com/auth/gmail.labels",
+      "https://www.googleapis.com/auth/gmail.modify"
+    ]
+  },
+  "background": {
+    "service_worker": "background.js"
+  },
+  "action": {
+    "default_popup": "popup.html"
+  }
+}

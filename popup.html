@@ -1,0 +1,29 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <style>
+    body { width: 250px; font-family: sans-serif; padding: 15px; margin: 0; background: #f4f7f6; }
+    .card { background: white; padding: 15px; border-radius: 10px; box-shadow: 0 2px 5px rgba(0,0,0,0.1); }
+    h2 { margin: 0 0 10px 0; font-size: 16px; color: #2c3e50; }
+    .stat-row { display: flex; justify-content: space-between; margin: 5px 0; font-size: 14px; }
+    .priority { color: #e74c3c; font-weight: bold; }
+    .monitor { color: #f39c12; font-weight: bold; }
+    .footer { font-size: 10px; color: #95a5a6; margin-top: 15px; text-align: center; }
+  </style>
+</head>
+<body>
+  <div class="card">
+    <h2>UniPriority Filter</h2>
+    <div class="stat-row">
+      <span>Priority Detected:</span>
+      <span id="p-count" class="priority">0</span>
+    </div>
+    <div class="stat-row">
+      <span>Monitor Labels:</span>
+      <span id="m-count" class="monitor">0</span>
+    </div>
+  </div>
+  <div class="footer">Monitoring nust.edu.pk & seecs.edu.pk</div>
+  <script src="popup.js"></script>
+</body>
+</html>
