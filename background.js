@@ -101,7 +101,7 @@ async function startDiscovery() {
       processedIds: []
     });
 
-    chrome.alarms.create('checkMail', { periodInMinutes: 5 });
+    chrome.alarms.create('checkMail', { periodInMinutes: 360 });
     console.log("MAILTER: Setup complete. Waiting for user configuration in Popup.");
 
   } catch (err) {
