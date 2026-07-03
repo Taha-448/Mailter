@@ -1,90 +1,33 @@
-***
-
 # Mailter 📧
 **An AI-Native Semantic Inbox Filter for Students.**
 
-Mailter is a sophisticated Chrome Extension (Manifest V3) that uses Large Language Models (LLMs) to transform a cluttered student inbox into a prioritized workspace. Unlike traditional filters that rely on rigid "if-this-then-that" rules, Mailter understands the **semantic intent** of your communications.
+Mailter is a Manifest V3 Chrome Extension that uses LLMs to dynamically categorize and prioritize student emails. By moving away from rigid keyword-based rules, Mailter understands the *intent* behind your messages, ensuring critical academic and career-related mail is always front and center.
 
-[![Manifest V3](https://img.shields.io/badge/Manifest-V3-blue)](#)
-[![Vercel](https://img.shields.io/badge/Backend-Vercel-black)](#)
-[![OpenAI](https://img.shields.io/badge/AI-GPT--4o--mini-green)](#)
-
----
-
-## 🌟 The Philosophy
-Students don't just receive "spam" and "not spam." They receive **clusters** of information: Academic Administration, Student Societies, Financial Alerts, Career Opportunities, and Automated Platform Noise. 
-
-Mailter doesn't guess what's important. It **discovers** your unique inbox patterns and lets you choose which "themes" of your life deserve a notification.
-
----
-
-## 🛠️ System Architecture
-
-Mailter is a full-stack AI application consisting of two parts:
-
-1.  **The Client (Chrome Extension):** Handles the "Heavy Lifting" of data fetching from the Gmail REST API, manages the local ID cache, and provides the Intent Dashboard UI.
-2.  **The Brain (Vercel Middleware):** A Next.js API that acts as a secure proxy to OpenAI. It handles high-level reasoning tasks like **Unsupervised Clustering** and **Batch Classification**.
-
----
-
-## 🧠 Key Engineering Features
+## 🧠 Core Engineering Achievements
 
 ### 1. Dynamic Semantic Clustering
-On installation, Mailter performs a "Deep Scan" of 500 historical email subjects. It uses **Parallel Fetching** (`Promise.all`) to pull this data in seconds. The LLM then analyzes these 500 data points to dynamically generate 4–12 custom categories unique to the user’s specific digital footprint.
+On installation, Mailter performs a "Deep Scan" of 500 historical email subjects using **Parallel Fetching** (`Promise.all`). It sends this data to a Vercel-hosted LLM middleware which performs unsupervised clustering to identify 4–12 distinct life categories unique to that user.
 
 ### 2. Token-Optimized Batch Classification
-To minimize API costs and latency, Mailter implements **Batch Inference**. Instead of sending 10 requests for 10 emails, it bundles them into a single JSON-structured prompt. This reduces token overhead by approximately **80%**.
+To minimize LLM API costs, Mailter implements **Batch Inference**. Multiple unread emails are bundled into a single JSON-structured prompt. Combined with a **Local ID Cache** (`processedIds`), the system ensures that each email is only ever classified once, reducing token overhead by ~80%.
 
-### 3. State-Persistence & ID Caching
-Mailter maintains a local **Processed ID Cache**. By tracking unique Gmail Message IDs, the extension ensures that the AI never processes (or charges for) the same email twice, even if it remains unread in the inbox for days.
+### 3. Server-Side Hierarchy (Nested Labeling)
+Mailter programmatically interacts with the Gmail REST API to create a hierarchical labeling system (`Priority/Category`). This allows for a clean, "nested" sidebar experience in Gmail while maintaining surgical organization.
 
-### 4. Manifest V3 Service Workers
-Fully compliant with the latest Chrome standards, Mailter utilizes an event-driven Service Worker and the `chrome.alarms` API to monitor the inbox every 5–30 minutes without draining the user's system resources.
+### 4. Secure AI Middleware
+Built a secure Next.js proxy on Vercel to handle LLM interactions. This architecture protects sensitive API keys and implements **Origin Validation** to ensure only the authorized extension can access the AI brain.
 
----
+## 🛠️ Tech Stack
+- **Extension:** JavaScript (ES6), Manifest V3, Gmail REST API, OAuth 2.0.
+- **Backend:** Next.js, Vercel AI SDK, OpenAI GPT-4o-mini.
+- **Infrastructure:** Vercel (Serverless), GitHub Actions.
 
-## 🚀 Technical Stack
-- **Frontend:** JavaScript (ES6), HTML5, CSS3
-- **Extension API:** Chrome Manifest V3 (Identity, Storage, Alarms, Notifications)
-- **Backend:** Next.js, Vercel AI SDK
-- **AI Model:** OpenAI GPT-4o-mini (Structured Outputs via Zod)
-- **Database:** `chrome.storage.local` (Client-side persistence)
-
----
-
-## ⚙️ Setup & Installation
-
-### Backend Setup
-1. Clone the `mailter-backend` repository.
-2. Deploy to **Vercel**.
-3. Set the following Environment Variables in Vercel:
-   - `OPENAI_API_KEY`: Your OpenAI API Key.
-   - `MAILTER_SECRET`: A secure handshake password.
-   - `EXTENSION_ID`: Your Chrome Extension ID (for Origin validation).
-
-### Extension Setup
-1. Clone this repository.
-2. Create a `secrets.js` file in the root:
-   ```javascript
-   export const VERCEL_URL = "https://your-vercel-app.vercel.app/api/mailter";
-   export const MAILTER_SECRET = "your-handshake-password";
-   ```
-3. Update `manifest.json` with your **Google OAuth Client ID**.
-4. Load the folder into Chrome via `chrome://extensions` -> **Load Unpacked**.
-
----
-
-## 🛡️ Security & Privacy
-- **No Data Persistence:** Mailter does not store your email content on any server. Emails are sent to the LLM for real-time classification and then immediately discarded.
-- **Secure Handshake:** All communication between the extension and the Vercel backend is protected by a secret token and Origin verification.
-- **Local Control:** All prioritization logic and "Processed ID" caches stay on the user's local machine.
-
----
+## 🚀 How it Works
+1. **Discovery:** Scans 500 emails to map your "Student World."
+2. **Intent Dashboard:** User chooses which AI-discovered themes are "Priority."
+3. **Silent Monitoring:** Background service worker filters mail every 5–30 minutes.
+4. **Auto-Labeling:** Important mail is instantly tagged in Gmail via server-side labels.
 
 ## 👤 Author
-**Muhammad Taha Anjum**  
-*Computer Science Student at NUST*  
-
-
----
-*Disclaimer: This project is for educational purposes. All API usage costs are the responsibility of the user.*
+**Muhammad Taha Anjum**
+*Computer Science Student at NUST*
