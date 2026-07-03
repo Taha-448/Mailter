@@ -1,6 +1,6 @@
 ***
 
-# Mailter 📧 🤖
+# Mailter 📧
 **An AI-Native Semantic Inbox Filter for Students.**
 
 Mailter is a sophisticated Chrome Extension (Manifest V3) that uses Large Language Models (LLMs) to transform a cluttered student inbox into a prioritized workspace. Unlike traditional filters that rely on rigid "if-this-then-that" rules, Mailter understands the **semantic intent** of your communications.
@@ -82,9 +82,9 @@ Fully compliant with the latest Chrome standards, Mailter utilizes an event-driv
 ---
 
 ## 👤 Author
-**Your Name**  
-*Computer Science Student at [Your University]*  
-[LinkedIn] | [Portfolio] | [Email]
+**Muhammad Taha Anjum**  
+*Computer Science Student at NUST*  
+
 
 ---
 *Disclaimer: This project is for educational purposes. All API usage costs are the responsibility of the user.*
