@@ -1,9 +1,6 @@
-// --- CONSTANTS ---
-const UNI_DOMAINS = ['nust.edu.pk', 'seecs.edu.pk'];
-const PRIORITY_KEYWORDS = ['deadline', 'result', 'exam', 'quiz', 'timetable', 'fee', 'challan', 'assignment', 'lecture', 'offer', 'internship'];
-const TRASH_KEYWORDS = ['unsubscribe', 'marketing', 'sale', 'newsletter', 'promotion'];
+import { VERCEL_URL, MAILTER_SECRET } from './secrets.js';
 
-// --- 1. AUTH HELPER ---
+// --- HELPERS ---
 async function getAuthToken() {
   return new Promise((resolve, reject) => {
     chrome.identity.getAuthToken({ interactive: true }, (token) => {
@@ -20,115 +17,99 @@ async function gmailApi(endpoint, method = 'GET', body = null) {
     headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
     body: body ? JSON.stringify(body) : null
   });
-  if (!res.ok) return null;
   return res.json();
 }
 
-// --- 2. THE ONE-TIME PROFILER ---
-chrome.runtime.onInstalled.addListener(async (details) => {
-  if (details.reason === "install") {
-    console.log("Initial scan starting...");
-    const data = await gmailApi('/messages?maxResults=500&q=is:sent');
-    const repliedTo = new Set();
-
-    if (data && data.messages) {
-      for (let m of data.messages) {
-        const detail = await gmailApi(`/messages/${m.id}`);
-        const headers = detail.payload.headers;
-        const toHeader = headers.find(h => h.name === 'To')?.value;
-        const email = toHeader?.match(/<(.+?)>/)?.[1] || toHeader;
-        if (email) repliedTo.add(email.toLowerCase());
+// Optimized Parallel Fetcher for 500 emails
+// Optimized Parallel Fetcher with Safety Checks
+async function fetchSubjects(count) {
+  const data = await gmailApi(`/messages?maxResults=${count}`);
+  if (!data || !data.messages) return [];
+  
+  const batchSize = 25;
+  let subjects = [];
+  
+  for (let i = 0; i < data.messages.length; i += batchSize) {
+    const batch = data.messages.slice(i, i + batchSize);
+    
+    const promises = batch.map(async (m) => {
+      try {
+        const d = await gmailApi(`/messages/${m.id}?format=metadata&metadataHeaders=Subject`);
+        
+        // ADDED SAFETY CHECK HERE (?.)
+        const subValue = d?.payload?.headers?.find(h => h.name === 'Subject')?.value;
+        
+        return subValue || ""; 
+      } catch (e) {
+        console.warn(`Skipping message ${m.id} due to error:`, e);
+        return "";
       }
-    }
-
-    await chrome.storage.local.set({
-      userProfile: {
-        repliedTo: Array.from(repliedTo),
-        whitelist: UNI_DOMAINS
-      },
-      stats: { priorityCount: 0, monitorCount: 0 }
     });
 
-    // Create labels in Gmail
-    await setupLabels();
-    
-    // Set up a check every 5 minutes
-    chrome.alarms.create('checkMail', { periodInMinutes: 5 });
+    const results = await Promise.all(promises);
+    // Filter out empty strings from skipped messages
+    subjects = subjects.concat(results.filter(s => s !== ""));
+    console.log(`MAILTER: Progress ${subjects.length}/${data.messages.length}`);
   }
-});
+  return subjects;
+}
 
-async function setupLabels() {
-  const existing = await gmailApi('/labels');
-  const labelNames = ['Uni-Priority', 'Uni-Monitor'];
-  
-  for (let name of labelNames) {
-    if (!existing.labels.find(l => l.name === name)) {
-      await gmailApi('/labels', 'POST', {
-        name,
-        labelListVisibility: 'labelShow',
-        messageListVisibility: 'show'
-      });
-    }
+// --- DISCOVERY PHASE ---
+async function startDiscovery() {
+  console.log("MAILTER: Starting Deep Discovery (500 emails)...");
+  try {
+    const subjects = await fetchSubjects(500);
+    const resp = await fetch(VERCEL_URL, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ action: 'cluster', data: subjects, secret: MAILTER_SECRET })
+    });
+    const { themes } = await resp.json();
+    await chrome.storage.local.set({ 
+      categories: themes, isSetup: false, priorityCategories: [], stats: { priority: 0 } 
+    });
+    console.log("MAILTER: AI Clustering complete. Themes found:", themes.length);
+    chrome.alarms.create('checkMail', { periodInMinutes: 5 });
+    await gmailApi('/labels', 'POST', { name: 'Uni-Priority' });
+  } catch (err) {
+    console.error("Discovery Failed:", err);
   }
 }
 
-// --- 3. SCORING PIPELINE ---
-async function scoreAndLabel() {
-  console.log("Checking for emails...");
-  const { userProfile, stats } = await chrome.storage.local.get(['userProfile', 'stats']);
-  
-  const data = await gmailApi('/messages?q=is:unread&maxResults=100'); 
-  
-  if (!data || !data.messages) {
-    console.log("No messages found.");
-    return;
-  }
+// --- CLASSIFICATION PHASE ---
+async function runClassification() {
+  const { isSetup, categories, priorityCategories, stats } = await chrome.storage.local.get(null);
+  if (!isSetup) return;
 
-  const labels = await gmailApi('/labels');
-  const pLabel = labels.labels.find(l => l.name === 'Uni-Priority');
-  const mLabel = labels.labels.find(l => l.name === 'Uni-Monitor');
+  const data = await gmailApi('/messages?q=is:unread&maxResults=10');
+  if (!data.messages) return;
+
+  const categoryNames = categories.map(c => c.name);
 
   for (let m of data.messages) {
     const email = await gmailApi(`/messages/${m.id}`);
-    const headers = email.payload.headers;
-    const from = (headers.find(h => h.name === 'From')?.value || "").toLowerCase();
-    const subject = (headers.find(h => h.name === 'Subject')?.value || "").toLowerCase();
-    
-    let score = 0;
+    const subject = email.payload.headers.find(h => h.name === 'Subject')?.value;
+    const from = email.payload.headers.find(h => h.name === 'From')?.value;
 
-    // SCORING LOGIC
-    if (userProfile.repliedTo.some(e => from.includes(e))) score += 50;
-    if (userProfile.whitelist.some(d => from.includes(d))) score += 30;
-    
-    PRIORITY_KEYWORDS.forEach(word => {
-      if (subject.includes(word)) score += 20;
+    const resp = await fetch(VERCEL_URL, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ 
+        action: 'classify', data: { subject, from }, categories: categoryNames, secret: MAILTER_SECRET 
+      })
     });
+    const result = await resp.json();
 
-    console.log(`Email from: ${from} | Subject: ${subject} | Total Score: ${score}`);
-
-    if (score >= 60) {
-      console.log("Result: PRIORITY");
-      await gmailApi(`/messages/${m.id}/modify`, 'POST', { addLabelIds: [pLabel.id] });
-      stats.priorityCount++;
-    } else if (score >= 25) {
-      console.log("Result: MONITOR");
-      await gmailApi(`/messages/${m.id}/modify`, 'POST', { addLabelIds: [mLabel.id] });
-      stats.monitorCount++;
-    } else {
-      console.log("Result: IGNORE (Score too low)");
+    if (priorityCategories.includes(result.category)) {
+      const labels = await gmailApi('/labels');
+      const pId = labels.labels.find(l => l.name === 'Uni-Priority').id;
+      await gmailApi(`/messages/${m.id}/modify`, 'POST', { addLabelIds: [pId] });
+      stats.priority = (stats.priority || 0) + 1;
+      await chrome.storage.local.set({ stats });
     }
   }
-  await chrome.storage.local.set({ stats });
-  console.log("Finished processing.");
 }
 
-function showNotify(sub) {
-  chrome.notifications.create({
-    type: 'basic',
-    iconUrl: 'icon.png', // Ensure you have an icon.png in your folder
-    title: 'Priority University Mail',
-    message: sub || 'New important email detected.'
-  });
-}
-
-chrome.alarms.onAlarm.addListener(scoreAndLabel);
+chrome.runtime.onInstalled.addListener(startDiscovery);
+chrome.alarms.onAlarm.addListener(runClassification);
+self.startDiscovery = startDiscovery; // Manual trigger

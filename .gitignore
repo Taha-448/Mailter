@@ -5,3 +5,4 @@ Thumbs.db
 # Ignore Node if you use it later
 node_modules/
 .env
+secrets.js
